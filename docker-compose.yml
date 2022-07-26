@@ -1,0 +1,42 @@
+version: '3.7'
+
+services:
+  web:
+    build: .
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/app
+    ports:
+      - 8000:8000
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy  
+
+  db:
+    image: postgres
+    restart: always
+    ports:
+      - 5432:5432 
+    environment:
+      POSTGRES_DB: ${DATABASE_NAME}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-q", "-d", "${DATABASE_NAME}", "-U", "${POSTGRES_USER}" ]
+      interval: 5s
+      timeout: 10s
+      retries: 120
+    volumes:
+      - db-data:/var/lib/postgresql/data
+
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - 8080:8080        
+
+volumes:
+  db-data:
+    driver: local        
