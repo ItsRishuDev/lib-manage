@@ -1,6 +1,7 @@
-from time import sleep
 from django.db import models
 from django.contrib.auth.models import User
+from django.utils.timezone import now
+from main.settings import BOOK_FREE_DAYS
 
 import datetime
 
@@ -22,28 +23,31 @@ class IssuedBook(models.Model):
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     book = models.ForeignKey(Book, on_delete=models.SET_NULL, null=True)
     returned = models.BooleanField(default=False)
-    issue_date = models.DateField(auto_created=True, auto_now_add=True)
+    issue_date = models.DateField(default=now)
+    # issue_date = models.DateField(auto_now_add=True, editable=True)
 
     def __str__(self):
         return self.user.first_name + ' issue ' + self.book.name
 
 
-class PaneltyDetail(models.Model):
-    late_submit = models.BooleanField()
+class SubmissionDetail(models.Model):
+    late_submit = models.BooleanField(default=False)
     late_fee_amount = models.PositiveIntegerField(null=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     issued_book = models.ForeignKey(IssuedBook, on_delete=models.SET_NULL, null=True)
-    return_date = models.DateField(auto_created=True)
+    return_date = models.DateField(default=now)
+    # return_date = models.DateField(auto_now_add=True, editable=True)
 
     def __str__(self):
-        return self.user.first_name + ' with panelty ' + self.amount
+        return self.user.first_name
     
     def save(self, *args, **kwargs):
         current_date = datetime.date.today()
         issued_date = self.issued_book.issue_date
 
         between_days = current_date - issued_date
-        days_without_charge = 5
+        between_days = between_days.days
+        days_without_charge = BOOK_FREE_DAYS
 
         if between_days < days_without_charge:
             self.late_fee_amount = 0
@@ -55,4 +59,4 @@ class PaneltyDetail(models.Model):
             self.late_fee_amount = charges_day * late_fee
             self.late_submit = True
 
-        super(PaneltyDetail, self).save(*args, **kwargs)    
+        super(SubmissionDetail, self).save(*args, **kwargs)    

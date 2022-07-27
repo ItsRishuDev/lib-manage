@@ -1,7 +1,8 @@
 from dataclasses import field
 from rest_framework import serializers
 
-from library.models import Book, IssuedBook, PaneltyDetail
+from library.models import Book, IssuedBook, SubmissionDetail
+from account.serializers import ShowUserSerializer
 
 class BookSerializer(serializers.ModelSerializer):
     class Meta:
@@ -25,11 +26,10 @@ class BookSerializer(serializers.ModelSerializer):
 class IssuedBookSerializer(serializers.ModelSerializer):
     class Meta:
         model = IssuedBook
-        fields = '__all__'
-        depth = 1
+        fields = ('__all__')
 
         def create(self, validated_data):
-            data = IssuedBook. objects.create(**validated_data)
+            data = IssuedBook.objects.create(**validated_data)
             return data
 
         def update(self, instance, validated_data):
@@ -37,7 +37,19 @@ class IssuedBookSerializer(serializers.ModelSerializer):
             return instance
 
 
-class PaneltyDetailSerializer(serializers.ModelSerializer):
+class ShowIssuedBookSerializer(serializers.ModelSerializer):
+    user = ShowUserSerializer()
+
     class Meta:
-        model = PaneltyDetail
+        model = IssuedBook
+        fields = ['id', 'issue_date', 'returned', 'user', 'book']
+        depth = 1
+
+
+class SubmissionDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SubmissionDetail
         fields = '__all__'
+
+        def create(self, validated_data):
+            data = SubmissionDetail.objects.create(**validated_data)

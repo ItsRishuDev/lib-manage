@@ -17,7 +17,7 @@ from knox.models import AuthToken
 
 from .serializers import CreateUserSerializer
 from account.models import MemberDetails
-from account.serializers import MemberDetailSerializer, ShowUserSerializer
+from account.serializers import MemberDetailSerializer, ShowUserSerializer, UpdateMemberDetailSerializer
 
 # Create your views here.
 
@@ -124,6 +124,30 @@ class MemberDetailView(APIView):
                 {"status": False, "response": "User does not exist"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+    def patch(self, request):
+        member_id = request.data.get('id')
+        try:
+            member = MemberDetails.objects.get(id=member_id)
+            serializer = UpdateMemberDetailSerializer(member, request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response({
+                    'status':True,
+                    'response':'Member Details Updated'
+                }, status=status.HTTP_202_ACCEPTED)
+
+            else:
+                return Response({
+                    'status':False,
+                    'response':serializer.errors
+                }, status=status.HTTP_400_BAD_REQUEST)    
+
+        except MemberDetails.DoesNotExist:
+            return Response({
+                'status':False,
+                'response':'Member does not exist'
+            })            
 
 
 class ShowUserView(APIView):

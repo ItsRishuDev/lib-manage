@@ -1,6 +1,8 @@
 from django.db import models
 from django.contrib.auth.models import User
 
+from library.models import IssuedBook
+
 # Create your models here.
 
 class MemberDetails(models.Model):
@@ -17,10 +19,11 @@ class MemberDetails(models.Model):
     member_type = models.CharField(choices=MEMBER_CHOICES, max_length=7)
 
     def save(self, *args, **kwargs):
-        if self.member_type == "Faculty":
-            self.bookLimit = 4
-        else:
-            self.bookLimit = 2
+        if self.issuedBook is None:
+            if self.member_type == "Faculty":
+                self.bookLimit = 4
+            else:
+                self.bookLimit = 2
 
         super(MemberDetails, self).save(*args, **kwargs)
 

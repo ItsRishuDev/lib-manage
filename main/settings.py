@@ -145,3 +145,5 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': ('knox.auth.TokenAuthentication', ),
 }
   
+
+BOOK_FREE_DAYS = 5  

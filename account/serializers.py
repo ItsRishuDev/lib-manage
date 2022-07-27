@@ -31,8 +31,14 @@ class MemberDetailSerializer(serializers.ModelSerializer):
         def create(self, validated_data):
             memberDetail = MemberDetails.objects.create(**validated_data)
             return memberDetail
+   
+
+class UpdateMemberDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MemberDetails
+        fields = ['issuedBook', 'bookLimit']
 
         def update(self, instance, validated_data):
             instance.issuedBook = validated_data.get('issuedBook', instance.issuedBook)
             instance.bookLimit = validated_data.get('bookLimit', instance.bookLimit)
-            return instance    
+            return instance
