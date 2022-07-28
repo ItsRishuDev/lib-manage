@@ -17,7 +17,11 @@ from knox.models import AuthToken
 
 from .serializers import CreateUserSerializer
 from account.models import MemberDetails
-from account.serializers import MemberDetailSerializer, ShowUserSerializer, UpdateMemberDetailSerializer
+from account.serializers import (
+    MemberDetailSerializer,
+    ShowUserSerializer,
+    UpdateMemberDetailSerializer,
+)
 
 # Create your views here.
 
@@ -47,7 +51,8 @@ class RegisterAPI(LoginView):
                     {
                         "status": False,
                         "response": "Username already exist",
-                    }
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
                 )
             else:
                 password = make_password(password)
@@ -75,7 +80,7 @@ class RegisterAPI(LoginView):
                     return Response(
                         {
                             "status": True,
-                            "resposne": {"user_id": user.id, "token": data},
+                            "response": {"user_id": user.id, "token": data},
                         },
                         status=status.HTTP_201_CREATED,
                     )
@@ -90,7 +95,8 @@ class RegisterAPI(LoginView):
                 {
                     "status": False,
                     "response": "Please provide name, username, email and password",
-                }
+                },
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
 
@@ -126,28 +132,26 @@ class MemberDetailView(APIView):
             )
 
     def patch(self, request):
-        member_id = request.data.get('id')
+        member_id = request.data.get("id")
         try:
             member = MemberDetails.objects.get(id=member_id)
             serializer = UpdateMemberDetailSerializer(member, request.data)
             if serializer.is_valid():
                 serializer.save()
-                return Response({
-                    'status':True,
-                    'response':'Member Details Updated'
-                }, status=status.HTTP_202_ACCEPTED)
+                return Response(
+                    {"status": True, "response": "Member Details Updated"},
+                    status=status.HTTP_202_ACCEPTED,
+                )
 
             else:
-                return Response({
-                    'status':False,
-                    'response':serializer.errors
-                }, status=status.HTTP_400_BAD_REQUEST)    
+                return Response(
+                    {"status": False, "response": serializer.errors},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
         except MemberDetails.DoesNotExist:
-            return Response({
-                'status':False,
-                'response':'Member does not exist'
-            })            
+            return Response({"status": False, "response": "Member does not exist"}, 
+            status=status.HTTP_400_BAD_REQUEST)
 
 
 class ShowUserView(APIView):
