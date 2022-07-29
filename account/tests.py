@@ -14,44 +14,47 @@ client = APIClient()
 
 
 class AccountAppTest(TestCase):
-    def setUp(self):
+    @classmethod
+    def setUpTestData(cls):
         # Generating admin User
-        admin_username = "anony"
-        admin_password = "password"
-        my_admin = User.objects.create_superuser(
-            admin_username, "admin@test.com", admin_password
+
+        cls.admin_username = "anony"
+        cls.admin_password = "password"
+        cls.admin_user = User.objects.create_superuser(
+            cls.admin_username, "admin@test.com", cls.admin_password
         )
 
-        self.admin_credentials = {
-            "username": admin_username,
-            "password": admin_password,
+        cls.admin_credentials = {
+            "username": cls.admin_username,
+            "password": cls.admin_password,
         }
 
-        admin_response = client.post(
+        cls.admin_response = client.post(
             reverse("login_user"),
-            data=json.dumps(self.admin_credentials),
+            data=json.dumps(cls.admin_credentials),
             content_type="application/json",
         ).data
 
-        self.admin_token = admin_response["token"]
+        cls.admin_token = cls.admin_response["token"]
 
         # Generating User object
-        self.setup_payload = {
+        cls.setup_payload = {
             "username": "rishabh",
             "password": "password",
             "name": "Rishabh",
             "email": "rishabh@rishabh.com",
         }
 
-        self.user_response = client.post(
+        cls.user_response = client.post(
             reverse("register_user"),
-            data=json.dumps(self.setup_payload),
+            data=json.dumps(cls.setup_payload),
             content_type="application/json",
         ).data
-        self.user_token = self.user_response["response"]["token"]["token"]
+        cls.user_token = cls.user_response["response"]["token"]["token"]
 
-        user_obj = User.objects.get(id=self.user_response["response"]["user_id"])
+    def setUp(self):
         # Generating Member Detail Object
+        user_obj = User.objects.get(id=self.user_response["response"]["user_id"])
 
         self.member_detail_obj = MemberDetails.objects.create(
             user=user_obj, phone=9876543210, member_type="Student"
@@ -117,6 +120,7 @@ class AccountAppTest(TestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_invalid_show_all_user(self):
+        client.credentials()
         response = client.get(reverse("view_user"), content_type="application/json")
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
         self.assertEqual(
@@ -132,9 +136,41 @@ class AccountAppTest(TestCase):
             "You do not have permission to perform this action.",
         )
 
-    # Create Member Detail Test 
+    # Create Member Detail Test
 
     def test_create_member_detail(self):
+        # Creating new user
+        new_user_payload = {
+            "username": "testuser",
+            "password": "password",
+            "name": "Test",
+            "email": "test@rishabh.com",
+        }
+
+        new_user_response = client.post(
+            reverse("register_user"),
+            data=json.dumps(new_user_payload),
+            content_type="application/json",
+        ).data
+
+        member_detail = {
+            "user": new_user_response["response"]["user_id"],
+            "phone": 9999999999,
+            "issuedBook": 1,
+            "member_type": "Student",
+        }
+        client.credentials(HTTP_AUTHORIZATION="Token " + self.admin_token)
+        response = client.post(
+            reverse("member_view"),
+            data=json.dumps(member_detail),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["status"], True)
+        self.assertEqual(response.data["response"], "Member details added successfully")
+
+    def test_invalid_error_create_member_detail(self):
         member_detail = {
             "user": self.user_response["response"]["user_id"],
             "phone": 9999999999,
@@ -147,13 +183,13 @@ class AccountAppTest(TestCase):
             data=json.dumps(member_detail),
             content_type="application/json",
         )
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(response.data["status"], True)
-        self.assertEqual(response.data["response"], "Member details added successfully")
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data["status"], False)
 
     def test_invalid_user_create_member_detail(self):
         member_detail = {
-            "user": self.user_response["response"]["user_id"]+100,
+            "user": self.user_response["response"]["user_id"] + 100,
             "phone": 9999999999,
             "member_type": "Student",
         }
@@ -181,7 +217,7 @@ class AccountAppTest(TestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(response.data["status"], False)
 
-    # Update Member Detail Test 
+    # Update Member Detail Test
 
     def test_update_member_detail(self):
         member_detail = {
@@ -221,11 +257,10 @@ class AccountAppTest(TestCase):
         self.assertEqual(response.data["status"], False)
         self.assertEqual(response.data["response"], "Member does not exist")
 
-
     def test_invalid_update_member_detail(self):
         member_detail = {
             "id": self.member_detail_obj.id,
-            "issuedBook": 'blah',
+            "issuedBook": "blah",
             "bookLimit": 3,
         }
         client.credentials(HTTP_AUTHORIZATION="Token " + self.admin_token)
@@ -237,7 +272,6 @@ class AccountAppTest(TestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(response.data["status"], False)
-  
 
     # Show Member Details Test
 
@@ -248,6 +282,7 @@ class AccountAppTest(TestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_invalid_show_all_member(self):
+        client.credentials()
         response = client.get(reverse("member_view"), content_type="application/json")
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
         self.assertEqual(

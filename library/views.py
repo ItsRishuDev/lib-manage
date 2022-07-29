@@ -1,9 +1,6 @@
-from tkinter import S
-from django.shortcuts import render
 from django.contrib.auth.models import User
 from account.models import MemberDetails
 from account.serializers import UpdateMemberDetailSerializer
-from library import serializers
 
 from rest_framework import permissions, status
 from rest_framework.response import Response
@@ -17,7 +14,7 @@ from library.serializers import (
     BookSerializer,
     IssuedBookSerializer,
     SubmissionDetailSerializer,
-    ShowIssuedBookSerializer
+    ShowIssuedBookSerializer,
 )
 
 # Create your views here.
@@ -108,7 +105,9 @@ class IssueBookView(APIView):
                     serializer = IssuedBookSerializer(data=request.data)
 
                     if serializer.is_valid():
-                        member_serializer = UpdateMemberDetailSerializer(member, data=temp_data)
+                        member_serializer = UpdateMemberDetailSerializer(
+                            member, data=temp_data
+                        )
                         if member_serializer.is_valid():
                             serializer.save(book=book, user=user)
                             member_serializer.save()
@@ -156,51 +155,54 @@ class IssueBookView(APIView):
 
         try:
             issueBook = IssuedBook.objects.get(id=issue_id)
-            print("___________________")
-            print("Here 1")
+
             issue_data = {
-                'user':issueBook.user.id,
-                'book':issueBook.book.id,
-                'returned':returned
+                "user": issueBook.user.id,
+                "book": issueBook.book.id,
+                "returned": returned,
             }
             serializer = IssuedBookSerializer(issueBook, data=issue_data)
             if serializer.is_valid():
-                print("Here 2")
-                #If User returns the book updating its Issue Book detail from Member Details. 
-                if returned == 'true':
+
+                # If User returns the book updating its Issue Book detail from Member Details.
+                if returned == "true":
                     user = issueBook.user
-                    member =  MemberDetails.objects.get(user=user)
+                    member = MemberDetails.objects.get(user=user)
                     bookIssued = int(member.issuedBook) - 1
 
-                    tempData = {
-                        'issuedBook':bookIssued
-                    }
+                    tempData = {"issuedBook": bookIssued}
 
-                    member_serializer = UpdateMemberDetailSerializer(member, data=tempData)
+                    member_serializer = UpdateMemberDetailSerializer(
+                        member, data=tempData
+                    )
                     if member_serializer.is_valid():
-                        print("here 3")
-                        #Generating Submission Report, should apply pannelty or not.
+                        # Generating Submission Report, should apply pannelty or not.
                         submissionData = {
-                            'user':user.id,
-                            'issued_book':issueBook.book.id
+                            "user": user.id,
+                            "issued_book": issueBook.book.id,
                         }
 
-                        submission_serializer = SubmissionDetailSerializer(data=submissionData)
+                        submission_serializer = SubmissionDetailSerializer(
+                            data=submissionData
+                        )
                         if submission_serializer.is_valid():
                             submission_serializer.save()
                         else:
-                            return Response({
-                                'status':False,
-                                'response':submission_serializer.errors
-                            }, status=status.HTTP_400_BAD_REQUEST)    
-                        
+                            return Response(
+                                {
+                                    "status": False,
+                                    "response": submission_serializer.errors,
+                                },
+                                status=status.HTTP_400_BAD_REQUEST,
+                            )
+
                         member_serializer.save()
 
                     else:
-                        return Response({
-                            'status':False,
-                            'response':member_serializer.errors
-                        }, status=status.HTTP_400_BAD_REQUEST)    
+                        return Response(
+                            {"status": False, "response": member_serializer.errors},
+                            status=status.HTTP_400_BAD_REQUEST,
+                        )
 
                 serializer.save()
                 return Response(
@@ -208,10 +210,10 @@ class IssueBookView(APIView):
                     status=status.HTTP_202_ACCEPTED,
                 )
             else:
-                return Response({
-                    'status':False,
-                    'response':serializer.errors
-                }, status=status.HTTP_400_BAD_REQUEST)    
+                return Response(
+                    {"status": False, "response": serializer.errors},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
         except IssuedBook.DoesNotExist:
             return Response(
@@ -222,7 +224,7 @@ class IssueBookView(APIView):
 
 class UserIssuedBookView(APIView):
     authentication_classes = (TokenAuthentication,)
-    permission_classes = (IsAuthenticated, )
+    permission_classes = (IsAuthenticated,)
 
     def get(self, request):
         books = IssuedBook.objects.filter(user=request.user, returned=False)
@@ -231,16 +233,18 @@ class UserIssuedBookView(APIView):
             {"status": True, "response": serializer.data}, status=status.HTTP_200_OK
         )
 
+
 class UserSubmissionView(APIView):
     authentication_classes = (TokenAuthentication,)
-    permission_classes = (IsAuthenticated, )
+    permission_classes = (IsAuthenticated,)
 
     def get(self, request):
         submissions = SubmissionDetail.objects.filter(user=request.user)
         serializer = SubmissionDetailSerializer(submissions, many=True)
         return Response(
             {"status": True, "response": serializer.data}, status=status.HTTP_200_OK
-        )        
+        )
+
 
 class SubmissionDetailView(APIView):
     authentication_classes = (TokenAuthentication,)
@@ -251,4 +255,4 @@ class SubmissionDetailView(APIView):
         serializer = SubmissionDetailSerializer(submissions, many=True)
         return Response(
             {"status": True, "response": serializer.data}, status=status.HTTP_200_OK
-        ) 
+        )

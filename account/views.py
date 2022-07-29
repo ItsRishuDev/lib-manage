@@ -1,4 +1,3 @@
-from xml.dom import NotFoundErr
 from django.contrib.auth import login
 from django.contrib.auth.models import User
 from django.contrib.auth.signals import user_logged_in
@@ -123,7 +122,10 @@ class MemberDetailView(APIView):
                     status=status.HTTP_201_CREATED,
                 )
             else:
-                return Response({"status": False, "response": serializer.errors})
+                return Response(
+                    {"status": False, "response": serializer.errors},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
         except User.DoesNotExist:
             return Response(
@@ -150,8 +152,10 @@ class MemberDetailView(APIView):
                 )
 
         except MemberDetails.DoesNotExist:
-            return Response({"status": False, "response": "Member does not exist"}, 
-            status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"status": False, "response": "Member does not exist"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
 
 class ShowUserView(APIView):
