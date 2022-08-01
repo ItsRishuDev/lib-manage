@@ -53,26 +53,50 @@ class LibraryAppTest(TestCase):
         ).data
         cls.user_token = cls.user_response["response"]["token"]["token"]
 
-    def setUp(self):
-        self.book_obj_1 = Book.objects.create(
+        cls.book_obj_1 = Book.objects.create(
             name="Book 1", author="Author 1", edition=1, price=400, late_fee=3
         )
-        self.book_obj_2 = Book.objects.create(
+        cls.book_obj_2 = Book.objects.create(
             name="Book 2", author="Author 2", edition=2, price=500, late_fee=4
         )
-        self.book_obj_3 = Book.objects.create(
+        cls.book_obj_3 = Book.objects.create(
             name="Book 3", author="Author 3", edition=1, price=600, late_fee=5
         )
 
-        self.user_obj = User.objects.get(id=self.user_response["response"]["user_id"])
+        cls.user_obj = User.objects.get(id=cls.user_response["response"]["user_id"])
 
-        self.member_detail_obj = MemberDetails.objects.create(
-            user=self.user_obj, phone=9876543210, member_type="Student", bookLimit=3, issuedBook=1
+        cls.member_detail_obj = MemberDetails.objects.create(
+            user=cls.user_obj,
+            phone=9876543210,
+            member_type="Student",
+            bookLimit=3,
+            issuedBook=1,
         )
 
-        self.issued_book_obj = IssuedBook.objects.create(
-            user=self.user_obj, book=self.book_obj_1
+        cls.issued_book_obj = IssuedBook.objects.create(
+            user=cls.user_obj, book=cls.book_obj_1
         )
+
+    # def setUp(self):
+    #     self.book_obj_1 = Book.objects.create(
+    #         name="Book 1", author="Author 1", edition=1, price=400, late_fee=3
+    #     )
+    #     self.book_obj_2 = Book.objects.create(
+    #         name="Book 2", author="Author 2", edition=2, price=500, late_fee=4
+    #     )
+    #     self.book_obj_3 = Book.objects.create(
+    #         name="Book 3", author="Author 3", edition=1, price=600, late_fee=5
+    #     )
+
+    #     self.user_obj = User.objects.get(id=self.user_response["response"]["user_id"])
+
+    #     self.member_detail_obj = MemberDetails.objects.create(
+    #         user=self.user_obj, phone=9876543210, member_type="Student", bookLimit=3, issuedBook=1
+    #     )
+
+    #     self.issued_book_obj = IssuedBook.objects.create(
+    #         user=self.user_obj, book=self.book_obj_1
+    #     )
 
     # Book Create Api Test Cases
     def test_create_valid_book(self):
@@ -455,26 +479,154 @@ class LibraryAppTest(TestCase):
             response.data["detail"], "Authentication credentials were not provided."
         )
 
+    # Update Issue Book Test Cases
+    def test_update_valid_issue_book(self):
+        self.valid_payload = {
+            "id": self.issued_book_obj.id,
+            "returned": "true",
+        }
 
-    # # Update Issue Book Test Cases
-    # def test_update_valid_issue_book(self):
-    #     self.valid_payload = {
-    #         "id": self.issued_book_obj.id,
-    #         "returned": "true",
-    #     }
+        client.credentials(HTTP_AUTHORIZATION="Token " + self.admin_token)
+        response = client.patch(
+            reverse("book_issue"),
+            data=json.dumps(self.valid_payload),
+            content_type="application/json",
+        )
 
-    #     client.credentials(HTTP_AUTHORIZATION="Token " + self.admin_token)
-    #     response = client.patch(
-    #         reverse("book_issue"),
-    #         data=json.dumps(self.valid_payload),
-    #         content_type="application/json",
-    #     )
+        updated_member_obj = MemberDetails.objects.get(user=self.user_obj.id)
 
-    #     print("Response : ", response.data)
+        self.assertEqual(response.data["status"], True)
+        self.assertEqual(response.data["response"], "Data updated successfully")
+        self.assertEqual(
+            updated_member_obj.issuedBook, self.member_detail_obj.issuedBook - 1
+        )
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
 
-    #     updated_member_obj = MemberDetails.objects.get(user=self.user_obj.id)
+    def test_update_not_found_issue_book(self):
+        self.valid_payload = {
+            "id": self.issued_book_obj.id + 100,
+            "returned": "true",
+        }
 
-    #     self.assertEqual(response.data["status"], True)
-    #     self.assertEqual(response.data["response"], "Data updated successfully")
-    #     self.assertEqual(updated_member_obj.issuedBook, self.member_detail_obj.issuedBook - 1)
-    #     self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+        client.credentials(HTTP_AUTHORIZATION="Token " + self.admin_token)
+        response = client.patch(
+            reverse("book_issue"),
+            data=json.dumps(self.valid_payload),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.data["status"], False)
+        self.assertEqual(response.data["response"], "Issued book not found")
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_update_invalid_issue_book(self):
+        self.valid_payload = {
+            "id": self.issued_book_obj.id,
+            "returned": "invalid",
+        }
+
+        client.credentials(HTTP_AUTHORIZATION="Token " + self.admin_token)
+        response = client.patch(
+            reverse("book_issue"),
+            data=json.dumps(self.valid_payload),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.data["status"], False)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_update_invalid_unauthorized_issue_book(self):
+        self.valid_payload = {
+            "id": self.issued_book_obj.id,
+            "returned": "true",
+        }
+
+        client.credentials()
+        response = client.patch(
+            reverse("book_issue"),
+            data=json.dumps(self.valid_payload),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(
+            response.data["detail"], "Authentication credentials were not provided."
+        )
+
+    def test_update_invalid_forbidden_issue_book(self):
+        self.valid_payload = {
+            "id": self.issued_book_obj.id,
+            "returned": "true",
+        }
+
+        client.credentials(HTTP_AUTHORIZATION="Token " + self.user_token)
+        response = client.patch(
+            reverse("book_issue"),
+            data=json.dumps(self.valid_payload),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            response.data["detail"],
+            "You do not have permission to perform this action.",
+        )
+
+    # Submission Book Test Cases
+    def test_view_valid_submission_book(self):
+        client.credentials(HTTP_AUTHORIZATION="Token " + self.admin_token)
+        response = client.get(
+            reverse("book_submission"),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.data["status"], True)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_view_invalid_unauthorized_submission_book(self):
+        client.credentials()
+        response = client.get(
+            reverse("book_submission"),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(
+            response.data["detail"], "Authentication credentials were not provided."
+        )
+
+    def test_view_invalid_forbidden_submission_book(self):
+        client.credentials(HTTP_AUTHORIZATION="Token " + self.user_token)
+        response = client.get(
+            reverse("book_submission"),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            response.data["detail"],
+            "You do not have permission to perform this action.",
+        )
+
+    # User Submission Book Test Cases
+    def test_view_valid_user_submission_book(self):
+        client.credentials(HTTP_AUTHORIZATION="Token " + self.user_token)
+        response = client.get(
+            reverse("user_submitted_book"),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.data["status"], True)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_view_invalid_user_submission_book(self):
+        client.credentials()
+        response = client.get(
+            reverse("user_submitted_book"),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(
+            response.data["detail"], "Authentication credentials were not provided."
+        )
